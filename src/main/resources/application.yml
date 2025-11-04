@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: backend
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          issuer-uri: ${AUTH_KEYCLOAK_URL}/realms/${AUTH_KEYCLOAK_REALM}
+#keycloak:
+#  auth-server-url: ${AUTH_KEYCLOAK_URL}
+#  realm: ${AUTH_KEYCLOAK_REALM}
+
+modules:
+  sso-client-registry:
+    admin:
+      credentials:
+        password: "${SSOCLIENTREGISTRY_ADMIN_PASSWORD}"
+        username: "${SSOCLIENTREGISTRY_ADMIN_USERNAME}"
+      realm:
+        name: master
+    ssoService:
+      url: "${SSOCLIENTREGISTRY_KEYCLOAK_URL}"
+    client-creation:
+      role-grant:
+        source-client:
+          clientId: realm-management
+        roles:
+          - manage-users
+          - view-users
+          - manage-clients
+  auth:
+    sso-client-bootstrap:
+      client:
+        clientId: "chatandk-client"
+        clientName: "chatandk-client"
+      realm:
+        name: ${AUTH_KEYCLOAK_REALM}
+      sso-service:
+        url: ${AUTH_KEYCLOAK_URL}
+      roles:
+        - ROLE_ADMIN
+        - ROLE_USER
+        - ROLE_CLIENT
+        - ROLE_UNVERIFIED
+        - ROLE_SPECIALIST
+
+
+server:
+  port: 8080

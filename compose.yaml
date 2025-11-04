@@ -1,0 +1,97 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en"
+      POSTGRES_DB: "${BACKEND_POSTGRES_DB}"
+      POSTGRES_USER: "${BACKEND_POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${BACKEND_POSTGRES_PASSWORD}"
+    shm_size: 128mb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  keycloak-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en"
+      POSTGRES_DB: "${KEYCLOAK_DB_DB}"
+      POSTGRES_USER: "${KEYCLOAK_DB_USER}"
+      POSTGRES_PASSWORD: "${KEYCLOAK_DB_PASSWORD}"
+    shm_size: 128mb
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+  keycloak:
+    image: keycloak/keycloak
+    build:
+      context: ./docker/keycloak
+    command:
+      - start-dev
+      - --import-realm
+      - --verbose
+    depends_on:
+      - keycloak-db
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USERNAME}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
+      KC_DB: "${KEYCLOAK_DB_KIND}"
+      KC_DB_URL: "${KEYCLOAK_DB_CONNECTION_URL}"
+      KC_DB_USERNAME: "${KEYCLOAK_DB_USER}"
+      KC_DB_PASSWORD: "${KEYCLOAK_DB_PASSWORD}"
+      KC_HEALTH_ENABLED: true
+    ports:
+      - "8021:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./docker/keycloak/import:/opt/keycloak/data/import
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --head -fsS http://localhost:9000/health/ready || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  backend-service:
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    build:
+      context: .
+    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar app.jar
+    healthcheck:
+      test: [ "CMD", "curl", "-fs", "http://127.0.0.1:8020/actuator/health" ]
+      start_period: 60s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    environment:
+      # Backend settings
+      CHAT_APP_PORT: "${CHAT_APP_PORT}"
+      # Shared settings
+      ENV: ${ENV}
+
+      # Auth
+      AUTH_BOOTSTRAP_USER_1_PASSWORD: "${AUTH_BOOTSTRAP_USER_1_PASSWORD}"
+      AUTH_BOOTSTRAP_USER_1_USERNAME: "${AUTH_BOOTSTRAP_USER_1_USERNAME}"
+      AUTH_BOOTSTRAP_USER_1_ROLES: "${AUTH_BOOTSTRAP_USER_1_ROLES}"
+      AUTH_KEYCLOAK_URL: "${AUTH_KEYCLOAK_URL}"
+      AUTH_KEYCLOAK_REALM: "${AUTH_KEYCLOAK_REALM}"
+      AUTH_KEYCLOAK_INITIAL_ACCESS_TOKEN: "${AUTH_KEYCLOAK_INITIAL_ACCESS_TOKEN}"
+
+      # SSOClientRegistry
+      SSOCLIENTREGISTRY_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
+      SSOCLIENTREGISTRY_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USERNAME}"
+      SSOCLIENTREGISTRY_KEYCLOAK_URL: "${AUTH_KEYCLOAK_URL}"
+
+      CHAT_POSTGRES_HOST: "${CHAT_POSTGRES_HOST}"
+      CHAT_POSTGRES_PORT: "${CHAT_POSTGRES_PORT}"
+      CHAT_POSTGRES_DB: "${CHAT_POSTGRES_DB}"
+      CHAT_POSTGRES_USER: "${CHAT_POSTGRES_USER}"
+      CHAT_POSTGRES_PASSWORD: "${CHAT_POSTGRES_PASSWORD}"
+    ports:
+      - "8020:8080"
+      - "5007:5005"
+volumes:
+  postgres_data:
+  postgres_keycloak_data:
+  keycloak_data:
