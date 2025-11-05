@@ -23,7 +23,7 @@ class SSORegistryService(
     override fun createSSOClient(client: ClientRepresentation, realm: String): ClientRepresentation {
         val createdClient = clientRepository.createClient(client, realm)
 
-        val clientUser = realmRepository.findRealmByName(realm)!!.clients().get(client.id).serviceAccountUser
+        val clientUser = realmRepository.findRealmByName(realm)!!.clients().get(createdClient.id).serviceAccountUser
 
         val realmManagementClient =
             clientRepository.findClientById(conf.clientCreation.roleGrant.sourceClient.clientId, realm)
@@ -49,11 +49,11 @@ class SSORegistryService(
         return createdClient
     }
 
-    override fun getClientSecretOrCreateClient(
+    override fun getOrCreateClient(
         clientId: String,
         clientName: String,
         targetRealm: String
-    ): SSOClientSecretModel {
+    ): ClientRepresentation {
         val realm: RealmResource = realmRepository.findRealmByName(targetRealm)
             ?: throw NotFoundException("Realm does not exist: $targetRealm")
 
@@ -66,12 +66,10 @@ class SSORegistryService(
                 it.isServiceAccountsEnabled = true
                 return@let it
             }
-            val createdClient = clientRepository.createClient(newClient, targetRealm)
+            val createdClient = this.createSSOClient(newClient, targetRealm)
             return@let createdClient
         }
 
-        return SSOClientSecretModel(
-            secret = client.secret
-        )
+        return client
     }
 }

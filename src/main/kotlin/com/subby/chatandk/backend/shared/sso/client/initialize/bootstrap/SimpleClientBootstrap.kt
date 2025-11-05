@@ -12,7 +12,7 @@ class SimpleClientBootstrap(
     private val ssoClientProperties: SsoClientBootstrapProperty,
 ) : ISSOClientBootstrap {
     override fun bootstrap(): SSOClientContext {
-        val selfSecret = ssoRegistryService.getClientSecretOrCreateClient(
+        val selfClient = ssoRegistryService.getOrCreateClient(
             clientId = ssoClientProperties.client.clientId,
             clientName = ssoClientProperties.client.clientName,
             targetRealm = ssoClientProperties.realm.name
@@ -23,17 +23,16 @@ class SimpleClientBootstrap(
             .serverUrl(ssoClientProperties.ssoService.url)
             .realm(ssoClientProperties.realm.name)
             .clientId(ssoClientProperties.client.clientId)
-            .clientSecret(selfSecret.secret)
+            .clientSecret(selfClient.secret)
             .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
             .build()
 
         val realm = keycloak.realm(ssoClientProperties.realm.name)
-        val client = realm.clients().get(realm.clients().findByClientId(ssoClientProperties.client.clientId).first().id)
-        val clientUser = client.serviceAccountUser
+        val clientSource = realm.clients().get(selfClient.id)
+        val clientUser = clientSource.serviceAccountUser
 
-        realm.roles().list().
         return SSOClientContext(
-            client = client,
+            client = clientSource,
             realm = realm,
             clientUser = clientUser,
             keycloak = keycloak
