@@ -1,6 +1,11 @@
 spring:
   application:
     name: backend
+  datasource:
+    url: jdbc:postgresql://${CHAT_POSTGRES_HOST}:${CHAT_POSTGRES_PORT}/${CHAT_POSTGRES_DB}
+    password: ${CHAT_POSTGRES_PASSWORD}
+    username: ${CHAT_POSTGRES_USER}
+    driver-class-name: org.postgresql.Driver
 #  security:
 #    oauth2:
 #      resourceserver:
@@ -9,17 +14,21 @@ spring:
 #keycloak:
 #  auth-server-url: ${AUTH_KEYCLOAK_URL}
 #  realm: ${AUTH_KEYCLOAK_REALM}
+logging:
+  level:
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG
 
 modules:
   sso-client-registry:
     admin:
       credentials:
-        password: "${SSOCLIENTREGISTRY_ADMIN_PASSWORD}"
-        username: "${SSOCLIENTREGISTRY_ADMIN_USERNAME}"
+        password: ${SSOCLIENTREGISTRY_ADMIN_PASSWORD}
+        username: ${SSOCLIENTREGISTRY_ADMIN_USERNAME}
       realm:
         name: master
     ssoService:
-      url: "${SSOCLIENTREGISTRY_KEYCLOAK_URL}"
+      url: ${SSOCLIENTREGISTRY_KEYCLOAK_URL}
     client-creation:
       role-grant:
         source-client:
